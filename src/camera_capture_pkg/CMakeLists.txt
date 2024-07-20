@@ -12,17 +12,23 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # Service files
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/CaptureImage.srv"
+  "srv/GetNextCoordinate.srv"
 )
 
 include_directories(
   include
   ${OpenCV_INCLUDE_DIRS}
+  ${geometry_msgs_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIRS}
 )
 
 add_executable(server src/service_member_function.cpp)
@@ -31,9 +37,15 @@ ament_target_dependencies(server rclcpp sensor_msgs std_srvs std_msgs cv_bridge 
 add_executable(client src/client_member_function.cpp)
 ament_target_dependencies(client rclcpp std_srvs std_msgs)
 
+add_executable(coordinate_service_node src/coordinate_service_node.cpp)
+ament_target_dependencies(coordinate_service_node rclcpp std_srvs geometry_msgs yaml-cpp)
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES})
+
 install(TARGETS
   server
   client
+  coordinate_service_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

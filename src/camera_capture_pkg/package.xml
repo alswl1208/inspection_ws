@@ -16,7 +16,11 @@
   <depend>std_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>OpenCV</depend>
-
+  <depend>geometry_msgs</depend>
+  <depend>yaml-cpp</depend> 
+  <depend>nav_msgs</depend>
+  <depend>rosidl_default_generators</depend>
+  
   <member_of_group>rosidl_interface_packages</member_of_group>
  
   <test_depend>ament_lint_auto</test_depend>
