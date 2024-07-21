@@ -1,0 +1,8 @@
+<root>
+    <BehaviorTree ID="InspectionTree">
+        <Sequence name="MainSequence">
+            <GetNextCoordinate/>
+            <CaptureImage/>
+        </Sequence>
+    </BehaviorTree>
+</root>

@@ -31,22 +31,39 @@ include_directories(
   ${YAML_CPP_INCLUDE_DIRS}
 )
 
-add_executable(server src/service_member_function.cpp)
-ament_target_dependencies(server rclcpp sensor_msgs std_srvs std_msgs cv_bridge OpenCV)
+# Add server executable
+add_executable(service_member_function src/service_member_function.cpp)
+ament_target_dependencies(service_member_function rclcpp sensor_msgs std_srvs std_msgs cv_bridge OpenCV)
 
-add_executable(client src/client_member_function.cpp)
-ament_target_dependencies(client rclcpp std_srvs std_msgs)
+# Add client executable
+add_executable(client_member_function src/client_member_function.cpp)
+ament_target_dependencies(client_member_function rclcpp std_srvs std_msgs)
 
+# Add coordinate service node executable
 add_executable(coordinate_service_node src/coordinate_service_node.cpp)
 ament_target_dependencies(coordinate_service_node rclcpp std_srvs geometry_msgs yaml-cpp)
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES})
 
+# Add behavior tree executor executable
+add_executable(bt_executor src/bt_executor.cpp)
+ament_target_dependencies(bt_executor rclcpp)
+
+# Install targets
 install(TARGETS
-  server
-  client
+  service_member_function
+  client_member_function
   coordinate_service_node
+  bt_executor
   DESTINATION lib/${PROJECT_NAME})
+
+# Install additional directories
+install(DIRECTORY
+  behavior_trees
+  config
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

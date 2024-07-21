@@ -1,0 +1,10 @@
+bt_executor:
+  ros__parameters:
+    groot2_port: 1667
+    tick_frequency: 100
+
+    plugins:
+      - camera_capture_pkg/BTPlugins
+
+    behavior_trees:
+      - $(find-pkg-share camera_capture_pkg)/behavior_trees/inspection_tree.xml
