@@ -1,8 +1,14 @@
-<root>
-    <BehaviorTree ID="InspectionTree">
-        <Sequence name="MainSequence">
-            <GetNextCoordinate/>
-            <CaptureImage/>
-        </Sequence>
-    </BehaviorTree>
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Sequence name="MoveAndCapture">
+      <MoveToCoordinate target_coordinates="0.32080577283492556,1.3855692416142013e-10,0.08577175284755842"/>
+      <CaptureImage/>
+      <MoveToCoordinate target_coordinates="8.25081,3.42993e-10,0.0851212"/>
+      <CaptureImage/>
+      <MoveToCoordinate target_coordinates="8.25081,-8.37,0.0851212"/>
+      <CaptureImage/>
+      <MoveToCoordinate target_coordinates="-0.58919,-8.37,0.0858479"/>
+      <CaptureImage/>
+    </Sequence>
+  </BehaviorTree>
 </root>

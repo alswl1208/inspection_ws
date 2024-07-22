@@ -2,9 +2,10 @@ bt_executor:
   ros__parameters:
     groot2_port: 1667
     tick_frequency: 100
+    #ros_plugins_timeout: 1000  # Optional (defaults 1000 ms)
 
     plugins:
-      - camera_capture_pkg/BTPlugins
+      - camera_capture_pkg/bt_plugins
 
     behavior_trees:
-      - $(find-pkg-share camera_capture_pkg)/behavior_trees/inspection_tree.xml
+      - camera_capture_pkg/behavior_trees/inspection_tree.xml

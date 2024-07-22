@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -17,11 +18,15 @@ find_package(nav_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(nav2_msgs REQUIRED)
+find_package(behaviortree_cpp_v3 REQUIRED)
+find_package(nav2_util REQUIRED) 
 
 # Service files
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/CaptureImage.srv"
   "srv/GetNextCoordinate.srv"
+  "srv/MoveToCoordinate.srv"
 )
 
 include_directories(
@@ -29,6 +34,7 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${geometry_msgs_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDE_DIRS}
+  ${behaviortree_cpp_v3_INCLUDE_DIRS}
 )
 
 # Add server executable
@@ -47,7 +53,7 @@ target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_C
 
 # Add behavior tree executor executable
 add_executable(bt_executor src/bt_executor.cpp)
-ament_target_dependencies(bt_executor rclcpp)
+ament_target_dependencies(bt_executor rclcpp behaviortree_cpp_v3)
 
 # Install targets
 install(TARGETS
