@@ -20,7 +20,7 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(behaviortree_cpp_v3 REQUIRED)
-find_package(nav2_util REQUIRED) 
+find_package(nav2_util REQUIRED)
 
 # Service files
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -55,8 +55,10 @@ target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_C
 add_executable(bt_executor src/bt_executor.cpp)
 ament_target_dependencies(bt_executor rclcpp behaviortree_cpp_v3)
 
+# Add move to coordinate node executable
 add_executable(move_to_coordinate_node src/move_to_coordinate_node.cpp)
 ament_target_dependencies(move_to_coordinate_node rclcpp nav2_msgs rclcpp_action geometry_msgs behaviortree_cpp_v3)
+target_link_libraries(move_to_coordinate_node yaml-cpp)
 
 # Install targets
 install(TARGETS
