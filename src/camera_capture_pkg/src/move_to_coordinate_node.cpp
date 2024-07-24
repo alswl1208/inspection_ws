@@ -6,13 +6,11 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <fstream>
 
-// 지정된 좌표로 이동하는 로봇 노드를 정의
 class MoveToCoordinateNode : public rclcpp::Node
 {
 public:
-  // 액션 클라이언트를 생성
   MoveToCoordinateNode()
-  : Node("move_to_coordinate_node"), current_index_(0)
+  : Node("move_to_coordinate_node"), current_index_(0), is_navigating_(false)
   {
     // navigate_to_pose 액션 서버와 통신할 클라이언트 생성
     client_ptr_ = rclcpp_action::create_client<nav2_msgs::action::NavigateToPose>(this, "navigate_to_pose");
@@ -28,21 +26,13 @@ public:
       return;
     }
 
-    // 로드된 위치 목록을 로깅
-    for (size_t i = 0; i < positions_.size(); ++i) {
-      RCLCPP_INFO(this->get_logger(), "Loaded position %zu: x = %f, y = %f, z = %f, w = %f", 
-                  i, positions_[i].pose.position.x, positions_[i].pose.position.y, 
-                  positions_[i].pose.position.z, positions_[i].pose.orientation.w);
-    }
-
-    // 1초마다 send_goal 메소드를 호출하는 타이머 생성
-    this->timer_ = this->create_wall_timer(
-      std::chrono::seconds(1),
-      std::bind(&MoveToCoordinateNode::send_goal, this));
+    RCLCPP_INFO(this->get_logger(), "Successfully loaded inspection positions.");
+    
+    // 첫 번째 목표를 전송
+    send_goal();
   }
 
 private:
-  // YAML 파일로부터 위치 정보를 읽어오는 메소드
   bool load_positions(const std::string & file_path)
   {
     try {
@@ -82,7 +72,6 @@ private:
     }
   }
 
-  // 목표 좌표로 이동하는 goal을 전송하는 메소드
   void send_goal()
   {
     if (!client_ptr_->wait_for_action_server(std::chrono::seconds(10))) {
@@ -95,54 +84,70 @@ private:
       return;
     }
 
-    // 목표 메시지 생성 및 YAML 파일에서 값 가져오기
     auto goal_msg = nav2_msgs::action::NavigateToPose::Goal();
     goal_msg.pose = positions_[current_index_];
-    RCLCPP_INFO(this->get_logger(), "Navigating to position x: %f, y: %f", 
-                goal_msg.pose.pose.position.x, goal_msg.pose.pose.position.y);
+    
+    // 포즈의 모든 값 출력
+    RCLCPP_INFO(this->get_logger(), "Navigating to position x: %f, y: %f, z: %f, orientation w: %f", 
+                goal_msg.pose.pose.position.x, goal_msg.pose.pose.position.y, 
+                goal_msg.pose.pose.position.z, goal_msg.pose.pose.orientation.w);
 
-    // 목표 전송 옵션 설정 및 결과 콜백 설정
     auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
     send_goal_options.result_callback = std::bind(&MoveToCoordinateNode::result_callback, this, std::placeholders::_1);
     send_goal_options.feedback_callback = std::bind(&MoveToCoordinateNode::feedback_callback, this, std::placeholders::_1, std::placeholders::_2);
 
     client_ptr_->async_send_goal(goal_msg, send_goal_options);
-    current_index_++;
+
+    is_navigating_ = true;
   }
 
-  // 목표 결과에 대한 콜백 함수
   void result_callback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult & result)
   {
     // 결과 코드에 따라 로깅
     switch(result.code) {
       case rclcpp_action::ResultCode::SUCCEEDED:
         RCLCPP_INFO(this->get_logger(), "Goal was successful");
+        is_navigating_ = false;
+        // 목표가 성공적으로 완료되었을 때 다음 목표로 이동
+        current_index_++;
+        if (current_index_ < positions_.size()) {
+          // 일정 시간 간격을 두고 다음 목표 전송
+          auto timer = this->create_wall_timer(
+            std::chrono::seconds(1),
+            [this]() { this->send_goal(); }
+          );
+        } else {
+          RCLCPP_INFO(this->get_logger(), "All positions have been navigated to.");
+        }
         break;
       case rclcpp_action::ResultCode::ABORTED:
         RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
+        is_navigating_ = false;
         break;
       case rclcpp_action::ResultCode::CANCELED:
         RCLCPP_ERROR(this->get_logger(), "Goal was canceled");
+        is_navigating_ = false;
         break;
       default:
         RCLCPP_ERROR(this->get_logger(), "Unknown result code");
+        is_navigating_ = false;
         break;
     }
   }
 
-  // 목표 진행 상황에 대한 피드백 콜백 함수
   void feedback_callback(
     rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::SharedPtr,
     const std::shared_ptr<const nav2_msgs::action::NavigateToPose::Feedback> feedback)
   {
-    RCLCPP_INFO(this->get_logger(), "Received feedback: distance remaining = %f", feedback->distance_remaining);
+    if (is_navigating_) {
+      RCLCPP_INFO(this->get_logger(), "Currently navigating to position: distance remaining = %f", feedback->distance_remaining);
+    }
   }
 
-  // 액션 클라이언트와 타이머를 위한 멤버 변수
   rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SharedPtr client_ptr_;
-  rclcpp::TimerBase::SharedPtr timer_;
   std::vector<geometry_msgs::msg::PoseStamped> positions_; // 위치 목록
   size_t current_index_; // 현재 목표 인덱스
+  bool is_navigating_; // 현재 목표로 이동 중인지 여부
 };
 
 int main(int argc, char ** argv)
