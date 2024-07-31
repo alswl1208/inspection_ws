@@ -14,8 +14,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'map',
-            default_value=os.path.join(get_package_share_directory('camera_capture_pkg'), 'config', 'my_map.yaml'),
-            description='/home/minji/my_map.yaml'
+            default_value=os.path.join(get_package_share_directory('camera_capture_pkg'), 'config', 'contest.yaml'),
+            description='/home/minji/contest.yaml'
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(bringup_dir, 'launch', 'bringup_launch.py')),

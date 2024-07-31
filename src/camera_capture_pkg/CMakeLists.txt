@@ -7,6 +7,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+#find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -37,19 +38,11 @@ include_directories(
   ${behaviortree_cpp_v3_INCLUDE_DIRS}
 )
 
-# Add server executable
-add_executable(service_member_function src/service_member_function.cpp)
-ament_target_dependencies(service_member_function rclcpp sensor_msgs std_srvs std_msgs cv_bridge OpenCV)
-
-# Add client executable
-add_executable(client_member_function src/client_member_function.cpp)
-ament_target_dependencies(client_member_function rclcpp std_srvs std_msgs)
-
 # Add coordinate service node executable
-add_executable(coordinate_service_node src/coordinate_service_node.cpp)
-ament_target_dependencies(coordinate_service_node rclcpp std_srvs geometry_msgs yaml-cpp)
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
-target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES})
+#add_executable(coordinate_service_node src/coordinate_service_node.cpp)
+#ament_target_dependencies(coordinate_service_node rclcpp std_srvs geometry_msgs yaml-cpp)
+#rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+#target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES})
 
 # Add behavior tree executor executable
 add_executable(bt_executor src/bt_executor.cpp)
@@ -57,17 +50,23 @@ ament_target_dependencies(bt_executor rclcpp behaviortree_cpp_v3)
 
 # Add move to coordinate node executable
 add_executable(move_to_coordinate_node src/move_to_coordinate_node.cpp)
-ament_target_dependencies(move_to_coordinate_node rclcpp nav2_msgs rclcpp_action geometry_msgs behaviortree_cpp_v3)
+ament_target_dependencies(move_to_coordinate_node
+  rclcpp
+  nav2_msgs
+  rclcpp_action
+  geometry_msgs
+  behaviortree_cpp_v3
+  yaml-cpp
+)
 target_link_libraries(move_to_coordinate_node yaml-cpp)
 
-# Install targets
-install(TARGETS
-  service_member_function
-  client_member_function
-  coordinate_service_node
-  move_to_coordinate_node
-  bt_executor
-  DESTINATION lib/${PROJECT_NAME})
+
+# Python 스크립트 설치
+install(PROGRAMS
+  camera_capture_pkg/service_member_function.py  # 설치할 Python 스크립트
+  camera_capture_pkg/coordinate_service_node.py 
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Install additional directories
 install(DIRECTORY

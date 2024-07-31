@@ -2,17 +2,17 @@
   <arg name="inspection_position_path" default="/home/minji/inspection_ws/src/camera_capture_pkg/config/inspection_position.yaml"/>
   <arg name="goal_pose_path" default="/home/minji/inspection_ws/src/camera_capture_pkg/config/goal_pose.yaml"/>
 
-  <node pkg="camera_capture_pkg" exec="bt_executor" output="screen">
+  <node pkg="camera_capture_pkg" executable="bt_executor" output="screen">
     <param name="inspection_position_path" value="$(arg inspection_position_path)"/>
   </node>
 
-  <node pkg="camera_capture_pkg" exec="coordinate_service_node" output="screen">
+  <node pkg="camera_capture_pkg" executable="coordinate_service_node" output="screen">
     <env name="INSPECTION_POSITION_PATH" value="$(arg inspection_position_path)"/>
   </node>
 
-  <node pkg="camera_capture_pkg" exec="service_member_function" output="screen"/>
+  <node pkg="camera_capture_pkg" executable="service_member_function" output="screen"/>
 
-  <node pkg="camera_capture_pkg" exec="move_to_coordinate_node" output="screen">
+  <node pkg="camera_capture_pkg" executable="move_to_coordinate_node" output="screen">
     <param name="goal_pose_file" value="$(arg goal_pose_path)"/>
   </node>
 </launch>

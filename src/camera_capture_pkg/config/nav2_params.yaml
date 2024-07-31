@@ -414,6 +414,11 @@ slam_toolbox:
   ros__parameters:
 
     # Plugin params
+    queue_size: 200 # 큐 크기를 기본값보다 크게 설정
+    throttle_scans: 1  # SLAM이 처리할 스캔의 빈도를 줄임
+    scan_buffer_size: 60  # 큐에 저장될 스캔의 수를 줄임.
+    map_update_interval: 5.0  # 맵 업데이트 주기를 늘려서 처리 부하를 줄임
+    
     solver_plugin: solver_plugins::CeresSolver
     ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
     ceres_preconditioner: SCHUR_JACOBI
