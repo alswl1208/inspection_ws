@@ -7,7 +7,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-#find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -22,6 +21,9 @@ find_package(yaml-cpp REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(behaviortree_cpp_v3 REQUIRED)
 find_package(nav2_util REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+
 
 # Service files
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -38,12 +40,6 @@ include_directories(
   ${behaviortree_cpp_v3_INCLUDE_DIRS}
 )
 
-# Add coordinate service node executable
-#add_executable(coordinate_service_node src/coordinate_service_node.cpp)
-#ament_target_dependencies(coordinate_service_node rclcpp std_srvs geometry_msgs yaml-cpp)
-#rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
-#target_link_libraries(coordinate_service_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES})
-
 # Add behavior tree executor executable
 add_executable(bt_executor src/bt_executor.cpp)
 ament_target_dependencies(bt_executor rclcpp behaviortree_cpp_v3)
@@ -57,9 +53,19 @@ ament_target_dependencies(move_to_coordinate_node
   geometry_msgs
   behaviortree_cpp_v3
   yaml-cpp
+  tf2
+  tf2_ros
 )
-target_link_libraries(move_to_coordinate_node yaml-cpp)
 
+
+# Install the executable
+install(TARGETS
+  move_to_coordinate_node
+  DESTINATION lib/${PROJECT_NAME})
+
+
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(move_to_coordinate_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES} ${OpenCV_LIBRARIES})
 
 # Python 스크립트 설치
 install(PROGRAMS

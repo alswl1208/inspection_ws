@@ -1,3 +1,6 @@
+# GetCoordinate.srv
+
+string coordinate_name
 ---
 float64 x
 float64 y

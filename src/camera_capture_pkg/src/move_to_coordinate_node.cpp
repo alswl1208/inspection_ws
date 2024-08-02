@@ -1,153 +1,116 @@
-#include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <nav2_msgs/action/navigate_to_pose.hpp>
-#include <rclcpp_action/rclcpp_action.hpp>
-#include <yaml-cpp/yaml.h>
-#include <ament_index_cpp/get_package_share_directory.hpp>
-#include <fstream>
+#include <memory>
+#include <string>
+
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
+#include "nav2_msgs/action/navigate_to_pose.hpp"
+#include "camera_capture_pkg/srv/get_next_coordinate.hpp"
 
 class MoveToCoordinateNode : public rclcpp::Node
 {
 public:
-  MoveToCoordinateNode()
-  : Node("move_to_coordinate_node"), current_index_(0), is_navigating_(false)
+  using NavigateToPose = nav2_msgs::action::NavigateToPose;
+  using GoalHandleNavigateToPose = rclcpp_action::ClientGoalHandle<NavigateToPose>;
+  using GetNextCoordinate = camera_capture_pkg::srv::GetNextCoordinate;
+
+  explicit MoveToCoordinateNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("move_to_coordinate_node", options)
   {
-    // navigate_to_pose 액션 서버와 통신할 클라이언트 생성
-    client_ptr_ = rclcpp_action::create_client<nav2_msgs::action::NavigateToPose>(this, "navigate_to_pose");
+    this->declare_parameter<std::string>("coordinate_name", "position1");
+    this->coordinate_name_ = this->get_parameter("coordinate_name").as_string();
 
-    // 패키지 경로를 가져와서 YAML 파일 경로 설정
-    std::string package_share_directory = ament_index_cpp::get_package_share_directory("camera_capture_pkg");
-    std::string inspection_position_file = package_share_directory + "/config/inspection_position.yaml";
-    RCLCPP_INFO(this->get_logger(), "Loading inspection positions from file: %s", inspection_position_file.c_str());
-
-    // YAML 파일로부터 위치 정보를 읽어옴
-    if (!load_positions(inspection_position_file)) {
-      RCLCPP_ERROR(this->get_logger(), "Failed to load inspection positions from file: %s", inspection_position_file.c_str());
-      return;
+    client_ = this->create_client<GetNextCoordinate>("get_next_coordinate");
+    while (!client_->wait_for_service(std::chrono::seconds(1))) {
+      RCLCPP_INFO(this->get_logger(), "Service not available, waiting again...");
     }
 
-    RCLCPP_INFO(this->get_logger(), "Successfully loaded inspection positions.");
-    
-    // 첫 번째 목표를 전송
+    action_client_ = rclcpp_action::create_client<NavigateToPose>(this, "navigate_to_pose");
+
     send_goal();
   }
 
 private:
-  bool load_positions(const std::string & file_path)
-  {
-    try {
-      RCLCPP_INFO(this->get_logger(), "Reading positions from file: %s", file_path.c_str());
-      YAML::Node config = YAML::LoadFile(file_path);
-      
-      if (!config["positions"]) {
-        RCLCPP_ERROR(this->get_logger(), "No 'positions' key found in YAML file.");
-        return false;
-      }
-
-      for (const auto & node : config["positions"]) {
-        if (!node["position"] || !node["orientation"]) {
-          RCLCPP_ERROR(this->get_logger(), "Invalid format in YAML file. Each entry must have 'position' and 'orientation'.");
-          return false;
-        }
-
-        geometry_msgs::msg::PoseStamped pose;
-        pose.pose.position.x = node["position"]["x"].as<double>();
-        pose.pose.position.y = node["position"]["y"].as<double>();
-        pose.pose.position.z = node["position"]["z"].as<double>();
-        pose.pose.orientation.x = node["orientation"]["x"].as<double>();
-        pose.pose.orientation.y = node["orientation"]["y"].as<double>();
-        pose.pose.orientation.z = node["orientation"]["z"].as<double>();
-        pose.pose.orientation.w = node["orientation"]["w"].as<double>();
-        positions_.push_back(pose);
-        RCLCPP_INFO(this->get_logger(), "Position added: x = %f, y = %f, z = %f, w = %f", 
-                    pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, pose.pose.orientation.w);
-      }
-      return true;
-    } catch (const YAML::Exception & e) {
-      RCLCPP_ERROR(this->get_logger(), "YAML Exception: %s", e.what());
-      return false;
-    } catch (const std::exception & e) {
-      RCLCPP_ERROR(this->get_logger(), "Exception: %s", e.what());
-      return false;
-    }
-  }
-
   void send_goal()
   {
-    if (!client_ptr_->wait_for_action_server(std::chrono::seconds(10))) {
+    auto request = std::make_shared<GetNextCoordinate::Request>();
+    request->coordinate_name = coordinate_name_;
+
+    using ServiceResponseFuture = rclcpp::Client<GetNextCoordinate>::SharedFuture;
+    auto response_received_callback = [this](ServiceResponseFuture future) {
+      auto response = future.get();
+      if (response) {
+        this->navigate_to_position(response);
+      } else {
+        RCLCPP_ERROR(this->get_logger(), "Failed to get coordinate from service");
+      }
+    };
+
+    auto result = client_->async_send_request(request, response_received_callback);
+  }
+
+  void navigate_to_position(std::shared_ptr<GetNextCoordinate::Response> position)
+  {
+    if (!action_client_->wait_for_action_server(std::chrono::seconds(10))) {
       RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
       return;
     }
 
-    if (current_index_ >= positions_.size()) {
-      RCLCPP_INFO(this->get_logger(), "No more positions to navigate to");
-      return;
-    }
+    auto goal_msg = NavigateToPose::Goal();
+    goal_msg.pose.header.frame_id = "map";
+    goal_msg.pose.header.stamp = this->now();
+    goal_msg.pose.pose.position.x = position->x;
+    goal_msg.pose.pose.position.y = position->y;
+    goal_msg.pose.pose.position.z = position->z;
+    goal_msg.pose.pose.orientation.x = position->orientation_x;
+    goal_msg.pose.pose.orientation.y = position->orientation_y;
+    goal_msg.pose.pose.orientation.z = position->orientation_z;
+    goal_msg.pose.pose.orientation.w = position->orientation_w;
 
-    auto goal_msg = nav2_msgs::action::NavigateToPose::Goal();
-    goal_msg.pose = positions_[current_index_];
-    
-    // 포즈의 모든 값 출력
-    RCLCPP_INFO(this->get_logger(), "Navigating to position x: %f, y: %f, z: %f, orientation w: %f", 
-                goal_msg.pose.pose.position.x, goal_msg.pose.pose.position.y, 
-                goal_msg.pose.pose.position.z, goal_msg.pose.pose.orientation.w);
+    RCLCPP_INFO(this->get_logger(), "Sending goal request...");
 
-    auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
+    auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
+    send_goal_options.goal_response_callback = std::bind(&MoveToCoordinateNode::goal_response_callback, this, std::placeholders::_1);
     send_goal_options.result_callback = std::bind(&MoveToCoordinateNode::result_callback, this, std::placeholders::_1);
     send_goal_options.feedback_callback = std::bind(&MoveToCoordinateNode::feedback_callback, this, std::placeholders::_1, std::placeholders::_2);
 
-    client_ptr_->async_send_goal(goal_msg, send_goal_options);
-
-    is_navigating_ = true;
+    auto goal_handle_future = action_client_->async_send_goal(goal_msg, send_goal_options);
   }
 
-  void result_callback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult & result)
+  void goal_response_callback(GoalHandleNavigateToPose::SharedPtr goal_handle)
   {
-    // 결과 코드에 따라 로깅
-    switch(result.code) {
+    if (!goal_handle) {
+      RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Goal accepted by server, waiting for result");
+    }
+  }
+
+  void result_callback(const GoalHandleNavigateToPose::WrappedResult & result)
+  {
+    switch (result.code) {
       case rclcpp_action::ResultCode::SUCCEEDED:
-        RCLCPP_INFO(this->get_logger(), "Goal was successful");
-        is_navigating_ = false;
-        // 목표가 성공적으로 완료되었을 때 다음 목표로 이동
-        current_index_++;
-        if (current_index_ < positions_.size()) {
-          // 일정 시간 간격을 두고 다음 목표 전송
-          auto timer = this->create_wall_timer(
-            std::chrono::seconds(1),
-            [this]() { this->send_goal(); }
-          );
-        } else {
-          RCLCPP_INFO(this->get_logger(), "All positions have been navigated to.");
-        }
+        RCLCPP_INFO(this->get_logger(), "Navigation succeeded");
         break;
       case rclcpp_action::ResultCode::ABORTED:
-        RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
-        is_navigating_ = false;
+        RCLCPP_ERROR(this->get_logger(), "Navigation was aborted");
         break;
       case rclcpp_action::ResultCode::CANCELED:
-        RCLCPP_ERROR(this->get_logger(), "Goal was canceled");
-        is_navigating_ = false;
+        RCLCPP_ERROR(this->get_logger(), "Navigation was canceled");
         break;
       default:
         RCLCPP_ERROR(this->get_logger(), "Unknown result code");
-        is_navigating_ = false;
         break;
     }
   }
 
-  void feedback_callback(
-    rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::SharedPtr,
-    const std::shared_ptr<const nav2_msgs::action::NavigateToPose::Feedback> feedback)
+  void feedback_callback(GoalHandleNavigateToPose::SharedPtr, const std::shared_ptr<const NavigateToPose::Feedback> feedback)
   {
-    if (is_navigating_) {
-      RCLCPP_INFO(this->get_logger(), "Currently navigating to position: distance remaining = %f", feedback->distance_remaining);
-    }
+    RCLCPP_INFO(this->get_logger(), "Received feedback");
   }
 
-  rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SharedPtr client_ptr_;
-  std::vector<geometry_msgs::msg::PoseStamped> positions_; // 위치 목록
-  size_t current_index_; // 현재 목표 인덱스
-  bool is_navigating_; // 현재 목표로 이동 중인지 여부
+  rclcpp::Client<GetNextCoordinate>::SharedPtr client_;
+  rclcpp_action::Client<NavigateToPose>::SharedPtr action_client_;
+  std::string coordinate_name_;
 };
 
 int main(int argc, char ** argv)
