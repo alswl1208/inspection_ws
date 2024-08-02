@@ -57,10 +57,17 @@ ament_target_dependencies(move_to_coordinate_node
   tf2_ros
 )
 
+add_executable(move_to_home_node src/move_to_home.cpp)
+ament_target_dependencies(move_to_home_node
+  rclcpp
+  rclcpp_action
+  nav2_msgs
+)
 
 # Install the executable
 install(TARGETS
   move_to_coordinate_node
+  move_to_home_node
   DESTINATION lib/${PROJECT_NAME})
 
 
@@ -69,7 +76,7 @@ target_link_libraries(move_to_coordinate_node ${cpp_typesupport_target} ${YAML_C
 
 # Python 스크립트 설치
 install(PROGRAMS
-  camera_capture_pkg/service_member_function.py  # 설치할 Python 스크립트
+  camera_capture_pkg/camera_node.py  # 설치할 Python 스크립트
   camera_capture_pkg/coordinate_service_node.py 
   DESTINATION lib/${PROJECT_NAME}
 )

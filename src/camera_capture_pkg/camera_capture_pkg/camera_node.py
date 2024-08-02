@@ -11,7 +11,7 @@ import tf2_ros
 
 class CameraCaptureNode(Node):
     def __init__(self):
-        super().__init__('camera_capture_node')
+        super().__init__('camera_node')
 
         # 이미지 토픽을 구독합니다. 메시지가 수신되면 image_callback 함수를 호출합니다.
         self.subscription = self.create_subscription(

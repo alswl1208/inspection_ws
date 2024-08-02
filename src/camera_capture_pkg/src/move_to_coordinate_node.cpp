@@ -14,11 +14,8 @@ public:
   using GetNextCoordinate = camera_capture_pkg::srv::GetNextCoordinate;
 
   explicit MoveToCoordinateNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
-  : Node("move_to_coordinate_node", options)
+  : Node("move_to_coordinate_node", options), current_index_(0)
   {
-    this->declare_parameter<std::string>("coordinate_name", "position1");
-    this->coordinate_name_ = this->get_parameter("coordinate_name").as_string();
-
     client_ = this->create_client<GetNextCoordinate>("get_next_coordinate");
     while (!client_->wait_for_service(std::chrono::seconds(1))) {
       RCLCPP_INFO(this->get_logger(), "Service not available, waiting again...");
@@ -33,7 +30,7 @@ private:
   void send_goal()
   {
     auto request = std::make_shared<GetNextCoordinate::Request>();
-    request->coordinate_name = coordinate_name_;
+    request->coordinate_name = "position" + std::to_string(current_index_ + 1);
 
     using ServiceResponseFuture = rclcpp::Client<GetNextCoordinate>::SharedFuture;
     auto response_received_callback = [this](ServiceResponseFuture future) {
@@ -73,7 +70,7 @@ private:
     send_goal_options.result_callback = std::bind(&MoveToCoordinateNode::result_callback, this, std::placeholders::_1);
     send_goal_options.feedback_callback = std::bind(&MoveToCoordinateNode::feedback_callback, this, std::placeholders::_1, std::placeholders::_2);
 
-    auto goal_handle_future = action_client_->async_send_goal(goal_msg, send_goal_options);
+    action_client_->async_send_goal(goal_msg, send_goal_options);
   }
 
   void goal_response_callback(GoalHandleNavigateToPose::SharedPtr goal_handle)
@@ -101,6 +98,15 @@ private:
         RCLCPP_ERROR(this->get_logger(), "Unknown result code");
         break;
     }
+
+    current_index_++;
+    if (current_index_ < total_positions_) {
+      RCLCPP_INFO(this->get_logger(), "Moving to next coordinate: position%d", current_index_ + 1);
+      send_goal();
+    } else {
+      RCLCPP_INFO(this->get_logger(), "All coordinates processed. Shutting down.");
+      rclcpp::shutdown();
+    }
   }
 
   void feedback_callback(GoalHandleNavigateToPose::SharedPtr, const std::shared_ptr<const NavigateToPose::Feedback> feedback)
@@ -110,7 +116,8 @@ private:
 
   rclcpp::Client<GetNextCoordinate>::SharedPtr client_;
   rclcpp_action::Client<NavigateToPose>::SharedPtr action_client_;
-  std::string coordinate_name_;
+  size_t current_index_;
+  const size_t total_positions_ = 2; // YAML 파일의 총 포지션 수를 설정합니다. 필요에 따라 변경하세요.
 };
 
 int main(int argc, char ** argv)
