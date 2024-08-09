@@ -24,12 +24,15 @@ find_package(nav2_util REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-
 # Service files
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/CaptureImage.srv"
   "srv/GetNextCoordinate.srv"
-  "srv/MoveToCoordinate.srv"
+  "action/MoveToCoordinate.action"
+  "action/MoveToHome.action"
+  "action/ExecuteTree.action"
+  "msg/NodeStatus.msg"
+  DEPENDENCIES builtin_interfaces
 )
 
 include_directories(
@@ -39,10 +42,6 @@ include_directories(
   ${YAML_CPP_INCLUDE_DIRS}
   ${behaviortree_cpp_v3_INCLUDE_DIRS}
 )
-
-# Add behavior tree executor executable
-add_executable(bt_executor src/bt_executor.cpp)
-ament_target_dependencies(bt_executor rclcpp behaviortree_cpp_v3)
 
 # Add move to coordinate node executable
 add_executable(move_to_coordinate_node src/move_to_coordinate_node.cpp)
@@ -56,6 +55,11 @@ ament_target_dependencies(move_to_coordinate_node
   tf2
   tf2_ros
 )
+target_link_libraries(move_to_coordinate_node
+  ${behaviortree_cpp_v3_LIBRARIES}
+  ${YAML_CPP_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
 
 add_executable(move_to_home_node src/move_to_home.cpp)
 ament_target_dependencies(move_to_home_node
@@ -64,19 +68,18 @@ ament_target_dependencies(move_to_home_node
   nav2_msgs
 )
 
-# Install the executable
+# Install the executables
 install(TARGETS
   move_to_coordinate_node
   move_to_home_node
   DESTINATION lib/${PROJECT_NAME})
 
-
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
-target_link_libraries(move_to_coordinate_node ${cpp_typesupport_target} ${YAML_CPP_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(move_to_coordinate_node ${cpp_typesupport_target})
 
-# Python 스크립트 설치
+# Python scripts installation
 install(PROGRAMS
-  camera_capture_pkg/camera_node.py  # 설치할 Python 스크립트
+  camera_capture_pkg/camera_node.py
   camera_capture_pkg/coordinate_service_node.py 
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -85,18 +88,12 @@ install(PROGRAMS
 install(DIRECTORY
   behavior_trees
   config
-  launch
   DESTINATION share/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
+  set(ament_cmake_lint_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()

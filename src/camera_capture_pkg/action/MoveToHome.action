@@ -1,0 +1,11 @@
+# Goal definition
+float32 x
+float32 y
+
+---
+# Result definition
+bool success
+
+---
+# Feedback definition
+float32 progress

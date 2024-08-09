@@ -1,14 +1,20 @@
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
-    <Sequence name="MoveAndCapture">
-      <MoveToCoordinate target_coordinates="0.32080577283492556,1.3855692416142013e-10,0.08577175284755842"/>
-      <CaptureImage/>
-      <MoveToCoordinate target_coordinates="8.25081,3.42993e-10,0.0851212"/>
-      <CaptureImage/>
-      <MoveToCoordinate target_coordinates="8.25081,-8.37,0.0851212"/>
-      <CaptureImage/>
-      <MoveToCoordinate target_coordinates="-0.58919,-8.37,0.0858479"/>
-      <CaptureImage/>
+    <Sequence name="Main Sequence">
+      <ForceSuccess>
+        <KeepRunningUntilFailure name="Inspect All Positions">
+          <Sequence name="Single Inspection Sequence">
+            <GetNextCoordinate service_name="/get_next_coordinate"/>
+            <ForceSuccess>
+              <Sequence name="Move and Inspect">
+                <MoveToCoordinate action_name="/navigate_to_pose"/>
+                <CaptureImage service_name="/capture_image"/>
+              </Sequence>
+            </ForceSuccess>
+          </Sequence>
+        </KeepRunningUntilFailure>
+      </ForceSuccess>
+      <MoveToHome action_name="/navigate_to_pose"/>
     </Sequence>
   </BehaviorTree>
 </root>

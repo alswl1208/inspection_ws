@@ -22,7 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
             'coordinate_service_node = camera_capture_pkg.coordinate_service_node:main',
-            'service_member_function = camera_capture_pkg.service_member_function:main',
+            'camera_node = camera_capture_pkg.camera_node:main',
         ],
     },
 )
