@@ -1,7 +1,7 @@
-# GetCoordinate.srv
-
 string coordinate_name
 ---
+bool success
+string message
 float64 x
 float64 y
 float64 z
