@@ -1,4 +1,4 @@
-<root main_tree_to_execute="MainTree">
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
     <Sequence name="Main Sequence">
       <ForceSuccess>
@@ -8,13 +8,13 @@
             <ForceSuccess>
               <Sequence name="Move and Inspect">
                 <MoveToCoordinate action_name="/navigate_to_pose"/>
-                <CaptureImage service_name="/capture_image"/>
+                <CaptureImageNode service_name="/capture_image"/>
               </Sequence>
             </ForceSuccess>
           </Sequence>
         </KeepRunningUntilFailure>
       </ForceSuccess>
-      <MoveToHome action_name="/navigate_to_pose"/>
+      <MoveToHomeNode action_name="/navigate_to_pose"/>
     </Sequence>
   </BehaviorTree>
 </root>
